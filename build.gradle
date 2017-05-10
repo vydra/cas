@@ -18,12 +18,6 @@ def isArtifactSigningRequired = {
 
 apply from: rootProject.file("gradle/overrides.gradle")
 apply from: rootProject.file("gradle/dependencies.gradle")
-apply plugin: "com.gradle.build-scan"
-
-buildScan {
-    licenseAgreementUrl = "https://gradle.com/terms-of-service"
-    licenseAgree = "yes"
-}
 
 buildscript {
     repositories {
