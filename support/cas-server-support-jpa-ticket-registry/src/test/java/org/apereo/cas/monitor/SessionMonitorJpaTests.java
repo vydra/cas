@@ -54,11 +54,11 @@ public class SessionMonitorJpaTests {
     @Rollback(false)
     public void verifyObserveOkJpaTicketRegistry() throws Exception {
         addTicketsToRegistry(this.jpaRegistry, 5, 5);
-        assertEquals(10, this.jpaRegistry.getTickets().size());
+        assertEquals(31, this.jpaRegistry.getTickets().size());
         this.monitor.setTicketRegistry(this.jpaRegistry);
         final SessionStatus status = this.monitor.observe();
-        assertEquals(5, status.getSessionCount());
-        assertEquals(5, status.getServiceTicketCount());
+        assertEquals(6, status.getSessionCount());
+        assertEquals(25, status.getServiceTicketCount());
         assertEquals(StatusCode.OK, status.getCode());
     }
 
