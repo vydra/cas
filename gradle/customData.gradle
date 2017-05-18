@@ -1,0 +1,109 @@
+import groovy.json.JsonBuilder
+import groovy.json.JsonSlurper
+import org.gradle.internal.exceptions.LocationAwareException
+
+def GITHUB_REPO = 'https://github.com/gradle/gradle-build-scan-quickstart'
+def FORUM_PARAMS = '%22&body=put%20your%20build%20scan%20url%20here!&category=Help%2FDiscuss&tags=buildscan-provided'
+
+// Local or CI
+if (System.getenv('CI')) {
+    buildScan.tag 'CI'
+    buildScan.link 'CI Build', System.getenv('BUILD_URL')
+} else {
+    buildScan.tag 'LOCAL'
+}
+
+// Git commit id
+def commitId = 'git rev-parse --verify HEAD'.execute().text.trim()
+if (commitId) {
+    buildScan.value 'Git Commit ID', commitId
+    buildScan.link 'Source', "$GITHUB_REPO/tree/$commitId"
+}
+
+// Git branch name
+def branchName = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+if (branchName) {
+    buildScan.value 'Git Branch Name', branchName
+}
+
+// Git dirty local state
+def status = 'git status --porcelain'.execute().text
+if (status) {
+    buildScan.tag "dirty"
+    buildScan.value "Git Status", status
+    buildScan.value "Git Status", "FOOBAR"
+}
+
+// Git diff
+buildScan.buildFinished {
+    def diff = 'git diff'.execute().text
+    if (diff) {
+        def baseUrl = new URL('https://api.github.com/gists')
+        String credentials = "$gistUsername:$gistToken"
+        String basicAuth = "Basic ${credentials.bytes.encodeBase64()}"
+        try {
+            HttpURLConnection connection = (HttpURLConnection) baseUrl.openConnection()
+            connection.with {
+                setRequestProperty("Authorization", basicAuth)
+                doOutput = true
+                requestMethod = 'POST'
+                outputStream.withWriter { writer ->
+                    jsonRequest(writer, gradle.rootProject, diff)
+                }
+
+                def parser = new JsonSlurper()
+                def url = parser.parse(content.text.bytes).html_url
+                buildScan.link('Git diff', url)
+            }
+        } catch (ex) {
+            gradle.rootProject.logger.warn("Unable to publish diff to Gist", ex)
+        }
+    }
+}
+
+// Checkstyle violations
+gradle.taskGraph.afterTask { Task task, TaskState state ->
+    if (task instanceof Checkstyle) {
+        if (state.failure) {
+            def checkstyle = new XmlSlurper().parse(task.reports.xml.destination)
+            def errors = checkstyle.file.collect {
+                String filePath = task.project.rootProject.relativePath(it.@name.text())
+                it.error.collect { "${filePath}:${it.@line}:${it.@column} \u2192 ${it.@message}" }
+            }.flatten()
+            errors.each { task.project.buildScan.value 'Checkstyle Issue', it }
+        }
+    }
+}
+
+// Creation of a topic in Gradle Forum
+buildScan.buildFinished { result ->
+    if (result.failure) {
+        if (result.failure instanceof LocationAwareException) {
+            if (!result.failure.reportableCauses.isEmpty()) {
+                def reportMessage = result.failure.reportableCauses[0].message
+                def message = reportMessage.replace(' ', "%20")
+                def link = "http://discuss.gradle.org/new-topic?title=Build%20fails%20with%20%22$message$FORUM_PARAMS"
+                buildScan.link("Create Gradle Forum Topic", link)
+            }
+        }
+
+    }
+}
+
+static String findLastGreenCIBuildId() {
+
+}
+
+static void jsonRequest(Writer out, Project project, String diff) {
+    def builder = new JsonBuilder()
+    builder {
+        description("Git diff for $project.name")
+        'public'(false)
+        files {
+            "${project.name}.diff" {
+                content diff
+            }
+        }
+    }
+    builder.writeTo(out)
+}

@@ -175,12 +175,12 @@ subprojects {
     compileJava.options.fork = true 
 
     def currentTime = java.time.ZonedDateTime.now()
-    compileJava.doLast {
-        buildDate = currentTime
-        jar.manifest {
-            attributes("Implementation-Date": project.buildDate)
-        }
-    }
+    // compileJava.doLast {
+    //     buildDate = currentTime
+    //     jar.manifest {
+    //         attributes("Implementation-Date": project.buildDate)
+    //     }
+    // }
 
     tasks.jar.onlyIf {
         project.buildDate != null || !project.buildJarFile.exists()
