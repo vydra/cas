@@ -35,6 +35,7 @@ if (status) {
 }
 
 // Git diff
+/*
 buildScan.buildFinished {
     def diff = 'git diff'.execute().text
     if (diff) {
@@ -59,7 +60,7 @@ buildScan.buildFinished {
             gradle.rootProject.logger.warn("Unable to publish diff to Gist", ex)
         }
     }
-}
+}*/
 
 // Checkstyle violations
 gradle.taskGraph.afterTask { Task task, TaskState state ->
