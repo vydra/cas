@@ -183,6 +183,10 @@ subprojects {
     //     }
     // }
 
+    compileJava.doLast {
+        println "Hello from JavaCompile task!"
+    }
+
     tasks.jar.onlyIf {
         project.buildDate != null || !project.buildJarFile.exists()
     }
